@@ -5,6 +5,7 @@
 #include "stdafx.h"
 #include "Deobfuscator Helper.h"
 #include "Deobfuscator HelperDlg.h"
+#include <stdexcept>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -17,6 +18,7 @@ CString GetBytesArray(CString sArg, int ReachedByte);
 CString AddWildCards(CString sArg);
 CString TakeOutSpaces(CString sArg, CButton* ChkSpace);
 CString ReplaceByNops(CString sArg);
+CString FixLines(CEdit* editbox, CString input);
 //end-defs-----------------------------------------------------------------
 
 class CAboutDlg : public CDialog
@@ -187,6 +189,8 @@ void CDeobfuscatorHelperDlg::OnBnClickedGo()
 	int x, y, index = 0;
 	editbox->GetWindowText(input);
 
+	input = FixLines(editbox, input);
+
 	// splitting lines
 	while (AfxExtractSubString(getC, input, index, _T('\n')))
 	{
@@ -196,14 +200,20 @@ void CDeobfuscatorHelperDlg::OnBnClickedGo()
 
 	//if (index != 1) index--;
 	//for (y = 0; index; y++) {
-	for (y = 0; y < index; y++) {
-		//if (y >= index)break;
-		x = ReachBytes(v[y]);
-		Bytes = GetBytesArray(v[y], x);
-		Wilded = AddWildCards(Bytes);
-		Spaced = TakeOutSpaces(Wilded, CheckSpace);
-		FinalResult += Spaced;
+	
+	try {
+		for (y = 0; y < index; y++) {
+			//if (y >= index)break;
+			x = ReachBytes(v[y]);
+			Bytes = GetBytesArray(v[y], x);
+			Wilded = AddWildCards(Bytes);
+			Spaced = TakeOutSpaces(Wilded, CheckSpace);
+			FinalResult += Spaced;
+		}
 	}
+	catch (std::exception) {
+		MessageBox(_T("Seems like this isn't what you copied from Olly, it's manipulated !"), _T("Error"), MB_ICONINFORMATION);
+	};
 
 	//fix the first char
 	if (CheckSpace->GetCheck() == 0) FinalResult = FinalResult.Mid(1);
@@ -247,29 +257,27 @@ void CDeobfuscatorHelperDlg::OnBnClickedCopy()
 int ReachBytes(CString sArg) {
 	CString getC;
 	int x, l = sArg.GetLength();
+	//sArg[99]; //exception test
 
-	for (x = 0; l; x++) {
+	for (x = 0; x < l; x++) {
 		getC = sArg.Mid(x, 1);
-		if (getC != " ") {
+		if (getC == " ") break;
+		if (getC == "\n") break;
+		/*if (getC != " ") {
 			//minup[0] += getC;
 		}
 
 		else
 		{
 			break;
-		}
+		}*/
 
 	}
 
-	for (x; l; x++) {
+	for (x; x < l; x++) {
 		getC = sArg.Mid(x, 1);
 		if (isxdigit(getC[0])) break;
-		
-		//if (getC == "A" || getC == "A" || getC == "B" || getC == "C" || getC == "D" || getC == "E" || getC == "F"
-			//|| getC == "1" || getC == "2" || getC == "3" || getC == "4" || getC == "5" || getC == "6" || getC == "7"
-			//|| getC == "8" || getC == "9" || getC == "0") {
-			//break;
-		//}
+		if (getC == "\n") break;
 	}
 
 	return x;
@@ -280,7 +288,7 @@ CString GetBytesArray(CString sArg, int ReachedByte) {
 	strRet = "";
 	int x = ReachedByte, l = sArg.GetLength();
 
-	for (x; l; x += 2) {
+	for (x; x <= l; x += 2) {
 		getC = sArg.Mid(x, 2);
 		if (getC != "  ") {
 			strRet += getC;
@@ -336,7 +344,7 @@ CString ReplaceByNops(CString sArg) {
 	int x, y = sArg.GetLength();
 	
 	//for (x = 0; y; x++) {
-	for (x = 0; x >= y; x++) {
+	for (x = 0; x < y; x++) {
 		if (sArg[x] != _T(' ')) {
 			//if (x >= y) break;
 			sArg.SetAt(x, _T('9'));
@@ -353,4 +361,18 @@ void CDeobfuscatorHelperDlg::OnBnClickedAbout()
 	// TODO: Add your control notification handler code here
 	MessageBox(_T("Deobfuscation Helper v0.1\nZ-Rantom | AT4RE\n\nUsage: just copy text from OllyDbg to get your script/bytes.\n\nSpecial thanks to: Ahmed18, Kurapica, Mr.eXoDia, atom0s, kao, xSRTsect.\n\nGreetings to: kOuD3LkA, Prodigy, Mouradpr, mICR0b, Azma, dj-siba, STRELiTZIAþ, ghost-dz, Sn!per X, Esso-X, Mr. Paradox, Service-Manual, abdo-ok, alfares, ColdZero.\nAnd all AT4RE and AoRE members\nAnd surely, You !"),
 		_T("About"), MB_ICONINFORMATION);
+}
+
+CString FixLines(CEdit* editbox, CString input) {
+	CString getC;
+	
+	while (input.Mid(0, 2) == "\r\n") {
+		input = input.Mid(2);
+	}
+	
+	while (input.Find(_T("\r\n\r\n"), 0) != -1) {
+		input.Replace(_T("\r\n\r\n"), _T("\r\n"));
+	}
+
+	return input;
 }
